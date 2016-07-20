@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+options=':i:e:o:p:'
+while getopts $options option
+do
+    case $option in
+        i  )    input=$OPTARG;;
+	p  )	pattern=$OPTARG;;
+        o  )    output=$OPTARG;;
+        e  )    encoding=$OPTARG;;
+        h  )    error $EXIT $DRYRUN;;
+        \? )    if (( (err & ERROPTS) != ERROPTS ))
+                then
+                    error $NOEXIT $ERROPTS "Unknown option."
+                fi;;
+        *  )    error $NOEXIT $ERROARG "Missing option argument.";;
+    esac
+done
+encoding="encoding.asp"
+encoding_nu="encoding-new.asp"
+
+output="./"
+
+if [ -z $input -o -z $encoding ] ; then
+    echo "Exiting: Missing input, encoding, or output  ..."
+    echo "gringo.gnd -i input -e encoding -o output_folder [./gringo.gnd] -p pattern"
+    exit 1
+fi
+
+if [ -z $output ] ; then
+   $output="gringo.gnd"
+fi
+path=$input
+
+#echo $path
+folder=$(realpath $path)
+#for folder in $(find $path/* -maxdepth 0 -type d ! -path "./checkers") ; do
+    echo $folder
+    echo "Grounding instances with Gringo"
+    for file in `find $folder -type f -iname "*$pattern" ! -iname "*.svn*" ! -iname "*.hg*" ! -iname ".*" ! -iname "*.lp" ! -iname "encoding*.asp" ! -iname "list-of-selected-instances.txt"` ; do
+	echo $file
+	basename=$(basename $file)
+	date=$(date)
+	version=$(gringo -v | head -1)
+	#echo "% Grounded with Gringo $version $date" > $folder/$basename.lparse
+	res=$(gringo $file $folder/$encoding 2>&1 >> $folder/$basename.lparse)
+	bzip2 $folder/$basename.lparse
+	res=$(gringo $file $folder/$encoding_nu 2>&1 >> $folder/$basename.new.lparse)
+	bzip2 $folder/$basename.new.lparse
+	#echo $res >> $folder/$basename.lparse
+	#break
+    done
+    #break
+#done
